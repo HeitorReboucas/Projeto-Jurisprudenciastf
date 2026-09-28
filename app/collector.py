@@ -34,13 +34,13 @@ class Collector:
         self.drive = GoogleDriveClient(settings)
 
     def run(self, job_id: str) -> None:
-        try:
-            with COLLECTION_LOCK:
+        with COLLECTION_LOCK:
+            try:
                 self._run_locked(job_id)
-        finally:
-            close_browser = getattr(self.stf, "close", None)
-            if close_browser:
-                close_browser()
+            finally:
+                close_browser = getattr(self.stf, "close", None)
+                if close_browser:
+                    close_browser()
 
     def _run_locked(self, job_id: str) -> None:
         job = self.database.get_job(job_id)
