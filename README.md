@@ -147,7 +147,7 @@ Se o callback OAuth não funcionar, confirme que o programa está na porta 8000 
 
 ### O comando `py` não funciona
 
-Instale o Python 3.12 ou mais recente pelo site oficial, feche e abra novamente o VS Code e tente `py -3.12 --version` outra vez. Confirme também que o terminal está aberto dentro da pasta do projeto.
+Instale o Python 3.12 ou mais recente pelo site oficial, feche e abra novamente o VS Code e tente `py -3 --version` outra vez. Confirme também que o terminal está aberto dentro da pasta do projeto.
 
 ### A pesquisa terminou sem documentos
 
