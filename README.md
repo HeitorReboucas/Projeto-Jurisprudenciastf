@@ -2,77 +2,196 @@
 
 # Coletor de Jurisprudência do STF
 
-Aplicação local para pesquisar documentos públicos no portal oficial de jurisprudência do Supremo Tribunal Federal, baixar inteiros teores em PDF, deduplicar por chave e SHA-256, manter checkpoints em SQLite e, opcionalmente, enviar os arquivos ao Google Drive.
+## Para que serve
 
-O coletor faz no máximo uma consulta de pesquisa por segundo e não tenta contornar CAPTCHA, bloqueios ou controles de acesso. A integração com o STF usa o endpoint de pesquisa consumido pelo próprio portal; alterações nesse serviço podem exigir atualização de `app/stf.py`.
+Este programa pesquisa decisões e outros documentos públicos no portal do Supremo Tribunal Federal (STF) e tenta baixar o arquivo PDF de inteiro teor quando ele está disponível.
 
-## Requisitos
+Você escolhe o tipo de documento, pode digitar palavras-chave e pode limitar a pesquisa por data. Os arquivos são salvos no seu computador. Se configurar o Google Drive, também pode pedir que sejam enviados para uma pasta da sua conta.
 
-- Windows 10/11 (o desenvolvimento também funciona em outros sistemas com Python 3.12+).
-- Python 3.12 ou superior.
-- Acesso à internet para consultar o STF e baixar documentos.
-- Opcional: projeto Google Cloud com Google Drive API habilitada e credenciais OAuth 2.0 do tipo Desktop app.
+O programa roda no seu computador; não é necessário publicar um site ou contratar um servidor. É preciso estar conectado à internet durante as pesquisas e os downloads.
 
-## Instalação no Windows
+## Começar no Windows
 
-No PowerShell, na pasta do projeto:
+Estas instruções são para Windows 10 ou 11.
+
+### 1. Baixar e abrir o projeto
+
+1. Abra a página do [Projeto Jurisprudência STF no GitHub](https://github.com/HeitorReboucas/Projeto-Jurisprudenciastf).
+2. Clique no botão verde **Code** e escolha **Download ZIP**.
+3. Quando o download terminar, clique com o botão direito no arquivo ZIP e escolha **Extrair Tudo**. Não execute o programa de dentro do ZIP.
+4. Abra o VS Code. Escolha **Arquivo > Abrir Pasta** e selecione a pasta `Projeto-Jurisprudenciastf` que foi extraída.
+5. No VS Code, escolha **Terminal > Novo Terminal**. Os comandos abaixo devem ser digitados nesse terminal, dentro da pasta do projeto.
+
+### 2. Instalar o Python
+
+Instale o Python 3.12 ou uma versão mais recente pelo [site oficial do Python](https://www.python.org/downloads/). Depois da instalação, feche e abra novamente o VS Code.
+
+Para conferir se o Windows reconhece o Python, abra o terminal do VS Code em **Terminal > Novo Terminal** e execute:
 
 ```powershell
-py -3.12 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-Copy-Item .env.example .env
+py -3 --version
 ```
 
-Se a política do PowerShell impedir a ativação, use o executável diretamente:
+Deve aparecer uma versão do Python. Se o comando `py` não for encontrado, instale o Python pelo site oficial e reinicie o VS Code.
+
+### 3. Preparar o projeto
+
+No terminal, confirme que está na pasta `Projeto-Jurisprudenciastf` e execute estes comandos, um de cada vez:
+
+```powershell
+py -3 -m venv .venv
+```
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+```
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-O workspace do VS Code já está configurado para selecionar `.venv\Scripts\python.exe` automaticamente.
+Esses comandos criam um ambiente Python separado para este projeto e instalam os componentes de que ele precisa. Faça essa preparação apenas na primeira vez ou depois de baixar uma cópia nova do projeto.
 
-## Google Drive (opcional)
+Não é obrigatório ativar o ambiente com `Activate.ps1`; usar o caminho `.\.venv\Scripts\python.exe` evita problemas com as permissões do PowerShell.
 
-1. No Google Cloud Console, crie ou selecione um projeto e habilite a Google Drive API.
-2. Configure a tela de consentimento OAuth e crie um ID de cliente OAuth do tipo **Web application**.
-3. Em URIs de redirecionamento autorizados, cadastre `http://localhost:8000/api/drive/oauth/callback`.
-4. Baixe o JSON de credenciais para a raiz do projeto com o nome `credentials.json`.
-5. Inicie a aplicação localmente na porta 8000 e clique em **Conectar Drive**.
-6. Conclua o consentimento no navegador. O token será salvo em `data/google-token.json`, que não é versionado.
-7. Selecione uma pasta do seu Drive antes de iniciar a coleta. A aplicação cria dentro dela `STF/{tipo}/{ano}`.
+### 4. Abrir o programa
 
-Para configurar outro caminho para o JSON OAuth ou para o token, defina `GOOGLE_CLIENT_SECRETS_FILE` ou `GOOGLE_TOKEN_FILE` no `.env`. O URI de retorno padrão é `http://localhost:8000/api/drive/oauth/callback`.
-
-Sem credenciais do Google, é possível coletar e manter os PDFs localmente em `data/downloads/STF/{tipo}/{ano}`.
-
-## Executar
+Inicie o programa com:
 
 ```powershell
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Abra <http://127.0.0.1:8000>. A documentação interativa da API fica em <http://127.0.0.1:8000/docs> e o schema OpenAPI em <http://127.0.0.1:8000/openapi.json>.
+Deixe essa janela do terminal aberta enquanto estiver usando o programa. Quando aparecer uma mensagem indicando que o servidor está rodando, abra este endereço no navegador:
 
-## API
+**http://127.0.0.1:8000**
 
-### Criar coleta
+Para encerrar, volte ao terminal e pressione **Ctrl+C**. O endereço é local: só funciona enquanto o programa estiver aberto neste computador.
 
-`POST /api/jobs` recebe pelo menos um tipo de conteúdo e filtros opcionais. As palavras-chave usam os operadores de pesquisa aceitos pelo portal do STF; os termos são enviados juntos e a busca padrão exige todos (`AND`).
+## Fazer uma pesquisa e baixar os PDFs
 
-```json
-{
-	"content_types": ["acordaos", "informativos"],
-	"date_from": "2024-01-01",
-	"date_to": "2024-12-31",
-	"query": "liberdade de expressão",
-	"process_class": "RE",
-	"drive_folder_id": null
-}
+Na página que abrir no navegador:
+
+1. Em **Tipo de conteúdo**, marque o material que deseja pesquisar. A opção **Acórdãos** já vem selecionada.
+2. Digite os termos no campo **Palavras-chave**. Por exemplo: `mulheres e direito fundamental`.
+3. Se não quiser limitar por data, deixe **Data inicial** e **Data final** vazias. A pesquisa usará as datas disponíveis no portal.
+4. Se quiser limitar o período, informe uma data inicial, uma data final ou ambas. As datas se referem à **publicação** do documento.
+5. Se quiser, preencha **Classe processual**, como `RE`. Esse campo é opcional.
+6. Para guardar os PDFs somente neste computador, mantenha **Não enviar ao Drive** selecionado.
+7. Clique em **Iniciar coleta** e acompanhe o andamento na seção **Execução**.
+
+Sem datas, é necessário informar palavras-chave. Isso evita pedir ao programa para baixar todo o conteúdo disponível sem nenhum filtro. Uma consulta sem data pode encontrar muitos documentos e levar mais tempo.
+
+Por padrão, o portal procura documentos que correspondam a todos os termos digitados. O programa envia a expressão ao mecanismo de pesquisa oficial do STF; portanto, os operadores e as aspas seguem as regras desse portal.
+
+### O que significam os contadores
+
+| Contador | O que mostra |
+| --- | --- |
+| **Encontrados** | Documentos que apareceram nos resultados da pesquisa. |
+| **Baixados** | PDFs que foram salvos no computador. |
+| **Enviados** | PDFs enviados para o Google Drive, quando configurado. |
+| **Duplicados** | PDFs idênticos a outro arquivo já registrado. |
+| **Erros** | Documentos ou envios que precisam de atenção. Consulte o registro da execução. |
+
+O seletor **Coletas recentes** permite consultar uma execução anterior. Se uma coleta for interrompida, selecione-a e use **Retomar** depois de resolver ou aguardar a causa da interrupção.
+
+## Onde os arquivos ficam
+
+Por padrão, o programa cria uma pasta chamada `data` dentro da pasta do projeto:
+
+```text
+data/
+	downloads/
+		STF/
+			Acórdãos/2024/
+			Decisões Monocráticas/2024/
+			Súmulas/2024/
+			Informativos/2024/
+	jurisprudencias.sqlite3
 ```
 
-Para pesquisar e baixar apenas por palavras-chave, sem limitar por data, omita as duas datas:
+As pastas por ano aparecem conforme os documentos são encontrados. O banco `jurisprudencias.sqlite3` guarda o histórico das coletas, os filtros, os contadores e os dados dos documentos. Não apague esse arquivo se quiser manter o histórico e a possibilidade de retomar jobs.
+
+Se o envio ao Drive falhar, um PDF já baixado continua salvo no computador. Os arquivos e o histórico não são enviados ao GitHub.
+
+## Usar o Google Drive (opcional)
+
+O Google Drive não é necessário para pesquisar nem baixar. Pule esta seção se quiser apenas guardar os PDFs no computador.
+
+Para habilitar o Drive, é preciso criar credenciais de acesso no Google Cloud. Esse passo é separado da instalação do programa:
+
+1. Entre no [Google Cloud Console](https://console.cloud.google.com/) com sua conta Google e crie um projeto.
+2. Habilite a **Google Drive API** nesse projeto.
+3. Configure a tela de consentimento OAuth. Se o Google deixar o aplicativo em modo de teste, adicione sua conta Google como usuária de teste.
+4. Crie um identificador de cliente OAuth do tipo **Web application**.
+5. Em **URIs de redirecionamento autorizados**, adicione exatamente `http://localhost:8000/api/drive/oauth/callback`.
+6. Baixe o arquivo JSON de credenciais e coloque-o na pasta principal do projeto com o nome `credentials.json`.
+7. Com o programa rodando, clique em **Conectar Drive** e autorize o acesso no navegador.
+8. Volte à página do coletor, clique em **Atualizar** e escolha uma pasta do Drive.
+9. Inicie uma coleta. O programa criará dentro da pasta escolhida uma estrutura `STF/tipo/ano`.
+
+O Google pode mostrar uma tela de aviso para aplicativos em teste; siga apenas se reconhecer o projeto e estiver usando suas próprias credenciais. O token de autorização fica em `data/google-token.json`. Não compartilhe nem publique `credentials.json` ou esse token. O projeto já ignora esses arquivos no Git.
+
+A autorização configurada atualmente permite ao programa listar as pastas do Drive e enviar PDFs. O Google solicitará uma permissão ampla para o Drive, não limitada tecnicamente só à pasta que você selecionar. Leia a tela de consentimento antes de aprovar; você pode revogar o acesso depois nas configurações da sua Conta Google.
+
+Se o callback OAuth não funcionar, confirme que o programa está na porta 8000 e que o endereço foi cadastrado sem diferenças no Google Cloud. Se escolher outra porta, o endereço de retorno também precisa ser atualizado na configuração do programa e no Google Cloud.
+
+## Se algo der errado
+
+### A página não abre
+
+- Confira se o terminal ainda mostra o servidor em execução.
+- Abra exatamente `http://127.0.0.1:8000`.
+- Se aparecer que a porta está ocupada, outro programa já está usando a porta 8000. Encerre esse programa ou configure uma porta diferente; para usar o Drive, ajuste também o endereço de retorno OAuth.
+
+### O comando `py` não funciona
+
+Instale o Python 3.12 ou mais recente pelo site oficial, feche e abra novamente o VS Code e tente `py -3.12 --version` outra vez. Confirme também que o terminal está aberto dentro da pasta do projeto.
+
+### A pesquisa terminou sem documentos
+
+Confira se selecionou o tipo de conteúdo correto, se os termos foram escritos como pretendido e se o período escolhido não exclui os resultados. As datas são de publicação, não necessariamente de julgamento. O portal do STF determina quais documentos correspondem aos termos.
+
+### A coleta ficou como “Interrompida” e mostra HTTP 202
+
+Em alguns momentos o portal responde temporariamente sem entregar resultados, inclusive por controles de tráfego. O programa registra a interrupção e não tenta contornar essa proteção. Aguarde um pouco e depois selecione a coleta em **Coletas recentes** e clique em **Retomar**.
+
+### Um documento aparece como erro ou não foi baixado
+
+Nem todo resultado tem um arquivo de inteiro teor disponível para download. O coletor registra esse caso e continua com os outros documentos. Abra o registro da execução para ver a mensagem específica.
+
+### O Google Drive não conecta ou o upload falha
+
+O download local funciona sem o Drive. Para enviar arquivos, confirme as credenciais, a autorização no navegador e a pasta selecionada. Se o envio falhar, o PDF permanece no computador e pode ser reenviado depois.
+
+## Outros sistemas operacionais
+
+O projeto também pode ser executado em macOS e Linux com Python 3.12 ou mais recente. No terminal aberto na pasta do projeto, crie o ambiente e instale as dependências:
+
+```bash
+python3 -m venv .venv
+```
+
+```bash
+.venv/bin/python -m pip install -r requirements.txt
+```
+
+Inicie a aplicação com:
+
+```bash
+.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+Depois, abra `http://127.0.0.1:8000` no navegador. No macOS e Linux, a pasta do ambiente virtual é `.venv/bin`; no Windows, é `.venv\Scripts`.
+
+## Informações técnicas (opcional)
+
+### API e documentação interativa
+
+Quem quiser usar a API diretamente pode abrir **http://127.0.0.1:8000/docs** enquanto o programa estiver rodando. A página permite consultar os endpoints e enviar pedidos de teste. A tela principal do coletor não exige conhecimento de API.
+
+Para iniciar uma coleta por API, envie uma requisição `POST /api/jobs`. Este exemplo pesquisa acórdãos por palavras-chave sem limitar a data:
 
 ```json
 {
@@ -81,57 +200,73 @@ Para pesquisar e baixar apenas por palavras-chave, sem limitar por data, omita a
 }
 ```
 
-As datas inicial e final podem ser omitidas; também é possível informar somente uma delas para definir um limite aberto. Se ambas forem omitidas, é obrigatório preencher `query` para evitar uma coleta sem filtro.
+As datas `date_from` e `date_to` são opcionais. Se ambas forem omitidas, `query` precisa conter palavras-chave. Valores possíveis para `content_types`: `acordaos`, `decisoes_monocraticas`, `sumulas` e `informativos`.
 
-Valores aceitos em `content_types`: `acordaos`, `decisoes_monocraticas`, `sumulas` e `informativos`. `drive_folder_id` é opcional; quando informado, requer OAuth concluído. O endpoint retorna `202 Accepted` com o identificador e o estado inicial do job.
+Principais endereços da API:
 
-### Consultar e retomar
+| Endereço | Para que serve |
+| --- | --- |
+| `GET /api/health` | Verifica se o serviço está ativo. |
+| `GET /api/content-types` | Lista os tipos de conteúdo. |
+| `POST /api/jobs` | Inicia uma coleta. |
+| `GET /api/jobs` | Lista coletas recentes. |
+| `GET /api/jobs/{job_id}` | Consulta o estado de uma coleta. |
+| `GET /api/jobs/{job_id}/events` | Consulta o registro de eventos. |
+| `POST /api/jobs/{job_id}/resume` | Retoma uma coleta interrompida ou com erros. |
+| `GET /api/documents` | Lista documentos salvos no catálogo local. |
+| `POST /api/documents/{document_id}/upload` | Envia novamente um PDF local ao Drive. |
+| `GET /api/drive/status` | Verifica a configuração do Drive. |
+| `GET /api/drive/auth/url` | Inicia a autorização do Drive. |
+| `GET /api/drive/folders` | Lista pastas disponíveis no Drive. |
 
-- `GET /api/health`: estado do serviço.
-- `GET /api/content-types`: tipos disponíveis.
-- `GET /api/jobs`: lista de coletas recentes.
-- `GET /api/jobs/{job_id}`: estado, filtros, contadores e item atual.
-- `GET /api/jobs/{job_id}/events`: histórico de eventos.
-- `POST /api/jobs/{job_id}/resume`: retoma uma execução interrompida ou concluída com erros.
-- `GET /api/documents?content_type=acordaos&status=downloaded&limit=100&offset=0`: pesquisa o catálogo local.
-- `POST /api/documents/{document_id}/upload` com `{"drive_folder_id":"..."}`: envia novamente um PDF já baixado.
-- `GET /api/drive/status`: estado da configuração e autorização do Google Drive.
-- `GET /api/drive/auth/url`: inicia o fluxo OAuth.
-- `GET /api/drive/folders`: lista pastas disponíveis no Drive.
+### Configurações avançadas
 
-Erros de validação usam `422`; itens ausentes, `404`; operação não disponível no estado atual, `409`; e falhas no provedor externo, `502` ou um job `completed_with_errors`.
+Normalmente não é necessário alterar estas opções. Se precisar, crie ou edite um arquivo `.env` na pasta do projeto:
 
-## Persistência e retomada
-
-O banco `data/jurisprudencias.sqlite3` guarda filtros, progresso, checkpoints, metadados, tentativas, erros e eventos. A execução interrompida pode ser retomada pela interface ou por `POST /api/jobs/{job_id}/resume`. A chave do STF evita importar o mesmo registro novamente; o hash SHA-256 identifica PDFs binariamente iguais. Arquivos baixados permanecem no disco quando o upload falha.
-
-Os documentos do STF nem sempre oferecem um arquivo de inteiro teor; esses casos ficam registrados como erro, sem derrubar o restante da coleta. O limite de tamanho por PDF é configurável por `DOWNLOAD_MAX_BYTES` (padrão: 50 MiB).
-
-O portal pode responder temporariamente com HTTP `202` sem corpo, por exemplo durante controles de tráfego. Nessa situação, o job fica `interrupted` com o motivo registrado; aguarde antes de usar **Retomar**. O coletor não tenta contornar os controles do portal.
-
-## Configuração
-
-As opções abaixo podem ser definidas no `.env` ou como variáveis de ambiente:
-
-| Variável | Padrão | Descrição |
+| Opção | Valor inicial | Explicação simples |
 | --- | --- | --- |
-| `DATA_DIR` | `data` | Diretório do banco, tokens e PDFs. |
-| `STF_SEARCH_URL` | endpoint oficial atual | Endpoint JSON de pesquisa do portal STF. |
-| `STF_TIMEOUT_SECONDS` | `30` | Timeout da pesquisa. |
-| `STF_REQUEST_DELAY_SECONDS` | `1.0` | Pausa mínima entre pesquisas; valores abaixo de 1 são rejeitados. |
-| `STF_MAX_ATTEMPTS` | `3` | Tentativas em falhas transitórias. |
-| `DOWNLOAD_MAX_BYTES` | `52428800` | Tamanho máximo por PDF. |
-| `DOWNLOAD_TIMEOUT_SECONDS` | `60` | Timeout do download. |
-| `GOOGLE_CLIENT_SECRETS_FILE` | `credentials.json` | Credenciais OAuth do cliente Desktop app. |
-| `GOOGLE_TOKEN_FILE` | `data/google-token.json` | Token OAuth local. |
-| `GOOGLE_REDIRECT_URI` | `http://localhost:8000/api/drive/oauth/callback` | URI de retorno OAuth. |
+| `DATA_DIR` | `data` | Onde guardar o banco, os PDFs e o token do Drive. |
+| `STF_SEARCH_URL` | Endereço oficial do portal | Serviço usado para fazer a pesquisa. |
+| `STF_TIMEOUT_SECONDS` | `30` | Tempo máximo de espera por resposta da pesquisa. |
+| `STF_REQUEST_DELAY_SECONDS` | `1.0` | Pausa mínima entre pesquisas no STF. Não pode ser menor que 1 segundo. |
+| `STF_MAX_ATTEMPTS` | `3` | Número de tentativas em falhas temporárias que podem ser repetidas. |
+| `DOWNLOAD_MAX_BYTES` | `52428800` | Tamanho máximo permitido por PDF, aproximadamente 50 MiB. |
+| `DOWNLOAD_TIMEOUT_SECONDS` | `60` | Tempo máximo de espera por cada PDF. |
+| `GOOGLE_CLIENT_SECRETS_FILE` | `credentials.json` | Local do arquivo de credenciais OAuth. |
+| `GOOGLE_TOKEN_FILE` | `data/google-token.json` | Local do token OAuth salvo após autorização. |
+| `GOOGLE_REDIRECT_URI` | `http://localhost:8000/api/drive/oauth/callback` | Endereço local de retorno da autorização Google. |
 
-O serviço é destinado a uso local confiável; não oferece autenticação de usuário para expor a API publicamente.
+### Segurança e limites
 
-## Testes
+- O coletor consulta informações públicas no portal oficial do STF e respeita uma pausa mínima entre pesquisas.
+- Ele não tenta contornar CAPTCHA, bloqueios ou controles de acesso do portal.
+- Esta aplicação foi feita para uso local e não tem login próprio. Mantenha o endereço de escuta em `127.0.0.1`; não exponha o serviço diretamente à internet.
+- O Google Drive é uma integração opcional. As credenciais e o token são arquivos privados e não devem ser enviados ao GitHub.
+- A pesquisa depende do serviço do STF. Se o portal estiver indisponível ou mudar, a execução poderá ser interrompida até o serviço voltar ou o código de integração ser atualizado.
+
+### Testes do projeto
+
+Para quem estiver desenvolvendo, os testes automatizados podem ser executados no Windows com:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Os testes não precisam de credenciais do Google nem fazem chamadas ao STF.
+No macOS ou Linux:
+
+```bash
+.venv/bin/python -m pytest -q
+```
+
+Os testes usam respostas simuladas e banco temporário; não precisam das credenciais do Google e não iniciam pesquisas reais no STF.
+
+### Palavras que aparecem neste manual
+
+| Palavra | Significado |
+| --- | --- |
+| **Coleta** | Uma pesquisa e o processamento dos documentos encontrados. |
+| **PDF de inteiro teor** | Arquivo que contém o documento completo, quando o STF o disponibiliza. |
+| **API** | Uma forma de outro programa conversar com este coletor. O usuário comum pode ignorar essa parte. |
+| **OAuth** | Processo pelo qual o Google pede sua autorização para o programa acessar o Drive. |
+| **Banco de dados local** | Arquivo no computador que guarda o histórico e o andamento das coletas. |
+| **Duplicado** | Arquivo idêntico a outro já baixado, reconhecido pelo conteúdo. |
