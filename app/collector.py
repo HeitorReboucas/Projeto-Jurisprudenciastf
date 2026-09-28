@@ -59,8 +59,16 @@ class Collector:
                     documents = self.stf.search_page(
                         query=filters.get("query"),
                         content_type=content_type,
-                        date_from=date.fromisoformat(filters["date_from"]),
-                        date_to=date.fromisoformat(filters["date_to"]),
+                        date_from=(
+                            date.fromisoformat(filters["date_from"])
+                            if filters.get("date_from")
+                            else None
+                        ),
+                        date_to=(
+                            date.fromisoformat(filters["date_to"])
+                            if filters.get("date_to")
+                            else None
+                        ),
                         process_class=filters.get("process_class"),
                         page=page,
                         page_size=PAGE_SIZE,

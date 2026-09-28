@@ -147,10 +147,10 @@
             <div class="type-list" id="contentTypes"></div>
           </fieldset>
           <div class="date-row">
-            <div class="field"><label for="dateFrom">Data inicial</label><input id="dateFrom" name="date_from" type="date" required /></div>
-            <div class="field"><label for="dateTo">Data final</label><input id="dateTo" name="date_to" type="date" required /></div>
+            <div class="field"><label for="dateFrom">Data inicial (opcional)</label><input id="dateFrom" name="date_from" type="date" /></div>
+            <div class="field"><label for="dateTo">Data final (opcional)</label><input id="dateTo" name="date_to" type="date" /></div>
           </div>
-          <div class="field"><label for="query">Termo de pesquisa</label><input id="query" name="query" maxlength="500" placeholder="Opcional" /></div>
+          <div class="field"><label for="query">Palavras-chave</label><input id="query" name="query" maxlength="500" placeholder="mulheres e direito fundamental" /></div>
           <div class="field"><label for="processClass">Classe processual</label><input id="processClass" name="process_class" maxlength="80" placeholder="Opcional, por exemplo RE" /></div>
           <div class="field">
             <label for="driveFolder">Pasta do Google Drive</label>
@@ -196,13 +196,6 @@
       const labels = new Map();
       let currentJobId = null;
       let pollTimer = null;
-
-      function localDate(value) {
-        const year = value.getFullYear();
-        const month = String(value.getMonth() + 1).padStart(2, "0");
-        const day = String(value.getDate()).padStart(2, "0");
-        return `${year}-${month}-${day}`;
-      }
 
       function showMessage(message, isError = false) {
         formMessage.textContent = message;
@@ -331,6 +324,9 @@
         event.preventDefault();
         const selectedTypes = [...form.querySelectorAll("input[name=content_type]:checked")].map((input) => input.value);
         if (!selectedTypes.length) return showMessage("Selecione ao menos um tipo de conteúdo.", true);
+        if (!form.date_from.value && !form.date_to.value && !form.query.value.trim()) {
+          return showMessage("Informe palavras-chave ou selecione ao menos uma data.", true);
+        }
         startButton.disabled = true;
         showMessage("");
         try {
@@ -338,8 +334,8 @@
             method: "POST",
             body: JSON.stringify({
               content_types: selectedTypes,
-              date_from: form.date_from.value,
-              date_to: form.date_to.value,
+              date_from: form.date_from.value || null,
+              date_to: form.date_to.value || null,
               query: form.query.value.trim() || null,
               process_class: form.process_class.value.trim() || null,
               drive_folder_id: driveFolder.value || null,
@@ -390,11 +386,6 @@
         if (currentJobId) await pollJob();
       });
 
-      const today = new Date();
-      const monthAgo = new Date(today);
-      monthAgo.setDate(today.getDate() - 30);
-      form.date_from.value = localDate(monthAgo);
-      form.date_to.value = localDate(today);
       Promise.all([loadContentTypes(), refreshDrive(), refreshJobHistory()]).catch((error) => showMessage(error.message, true));
     </script>
   </body>

@@ -14,16 +14,18 @@ ContentType = Literal[
 
 class CollectionRequest(BaseModel):
     content_types: list[ContentType] = Field(min_length=1)
-    date_from: date
-    date_to: date
+    date_from: date | None = None
+    date_to: date | None = None
     query: str | None = Field(default=None, max_length=500)
     process_class: str | None = Field(default=None, max_length=80)
     drive_folder_id: str | None = Field(default=None, max_length=300)
 
     @model_validator(mode="after")
     def validate_date_range(self) -> "CollectionRequest":
-        if self.date_from > self.date_to:
+        if self.date_from and self.date_to and self.date_from > self.date_to:
             raise ValueError("A data inicial deve ser anterior ou igual à data final")
+        if not self.date_from and not self.date_to and not (self.query or "").strip():
+            raise ValueError("Informe palavras-chave quando não houver filtro de data")
         self.content_types = list(dict.fromkeys(self.content_types))
         return self
 
@@ -32,8 +34,8 @@ class JobResponse(BaseModel):
     id: str
     status: str
     content_types: list[str]
-    date_from: date
-    date_to: date
+    date_from: date | None
+    date_to: date | None
     query: str | None
     process_class: str | None
     drive_folder_id: str | None

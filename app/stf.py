@@ -26,6 +26,10 @@ SEARCH_FIELDS = [
 ]
 
 
+class STFTemporaryUnavailable(RuntimeError):
+    pass
+
+
 @dataclass(frozen=True)
 class STFDocument:
     document_key: str
@@ -44,9 +48,11 @@ class STFClient:
         *,
         search_url: str = STF_SEARCH_URL,
         timeout_seconds: float = 30,
-        request_delay_seconds: float = 0.25,
+        request_delay_seconds: float = 1.0,
         max_attempts: int = 3,
     ) -> None:
+        if request_delay_seconds < 1.0:
+            raise ValueError("O intervalo mínimo entre pesquisas do STF é 1 segundo")
         self.search_url = search_url
         self.timeout_seconds = timeout_seconds
         self.request_delay_seconds = request_delay_seconds
@@ -57,8 +63,8 @@ class STFClient:
         *,
         query: str | None,
         content_type: str,
-        date_from: date,
-        date_to: date,
+        date_from: date | None,
+        date_to: date | None,
         process_class: str | None,
         page: int,
         page_size: int = 100,
@@ -68,16 +74,13 @@ class STFClient:
             raise ValueError(f"Tipo de conteúdo não suportado: {content_type}")
 
         filters: list[dict[str, Any]] = [{"term": {"base": base}}]
-        filters.append(
-            {
-                "range": {
-                    "publicacao_data": {
-                        "gte": date_from.isoformat(),
-                        "lte": date_to.isoformat(),
-                    }
-                }
-            }
-        )
+        date_range: dict[str, str] = {}
+        if date_from:
+            date_range["gte"] = date_from.isoformat()
+        if date_to:
+            date_range["lte"] = date_to.isoformat()
+        if date_range:
+            filters.append({"range": {"publicacao_data": date_range}})
         if process_class:
             filters.append(
                 {
@@ -125,6 +128,11 @@ class STFClient:
                         headers={"User-Agent": "STF-Jurisprudencias-Coletor/1.0"},
                     )
                     response.raise_for_status()
+                    if response.status_code == 202 and not response.content:
+                        raise STFTemporaryUnavailable(
+                            "O portal STF retornou HTTP 202 com resposta vazia; "
+                            "aguarde antes de iniciar outra coleta."
+                        )
                     return response.json()
             except (httpx.HTTPError, ValueError) as error:
                 last_error = error

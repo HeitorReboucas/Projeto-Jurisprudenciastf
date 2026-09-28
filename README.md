@@ -59,7 +59,7 @@ Abra <http://127.0.0.1:8000>. A documentação interativa da API fica em <http:/
 
 ### Criar coleta
 
-`POST /api/jobs` recebe um intervalo inclusivo de publicação, pelo menos um tipo de conteúdo e filtros opcionais:
+`POST /api/jobs` recebe pelo menos um tipo de conteúdo e filtros opcionais. As palavras-chave usam os operadores de pesquisa aceitos pelo portal do STF; os termos são enviados juntos e a busca padrão exige todos (`AND`).
 
 ```json
 {
@@ -71,6 +71,17 @@ Abra <http://127.0.0.1:8000>. A documentação interativa da API fica em <http:/
 	"drive_folder_id": null
 }
 ```
+
+Para pesquisar e baixar apenas por palavras-chave, sem limitar por data, omita as duas datas:
+
+```json
+{
+	"content_types": ["acordaos"],
+	"query": "mulheres e direito fundamental"
+}
+```
+
+As datas inicial e final podem ser omitidas; também é possível informar somente uma delas para definir um limite aberto. Se ambas forem omitidas, é obrigatório preencher `query` para evitar uma coleta sem filtro.
 
 Valores aceitos em `content_types`: `acordaos`, `decisoes_monocraticas`, `sumulas` e `informativos`. `drive_folder_id` é opcional; quando informado, requer OAuth concluído. O endpoint retorna `202 Accepted` com o identificador e o estado inicial do job.
 
@@ -95,6 +106,8 @@ Erros de validação usam `422`; itens ausentes, `404`; operação não disponí
 O banco `data/jurisprudencias.sqlite3` guarda filtros, progresso, checkpoints, metadados, tentativas, erros e eventos. A execução interrompida pode ser retomada pela interface ou por `POST /api/jobs/{job_id}/resume`. A chave do STF evita importar o mesmo registro novamente; o hash SHA-256 identifica PDFs binariamente iguais. Arquivos baixados permanecem no disco quando o upload falha.
 
 Os documentos do STF nem sempre oferecem um arquivo de inteiro teor; esses casos ficam registrados como erro, sem derrubar o restante da coleta. O limite de tamanho por PDF é configurável por `DOWNLOAD_MAX_BYTES` (padrão: 50 MiB).
+
+O portal pode responder temporariamente com HTTP `202` sem corpo, por exemplo durante controles de tráfego. Nessa situação, o job fica `interrupted` com o motivo registrado; aguarde antes de usar **Retomar**. O coletor não tenta contornar os controles do portal.
 
 ## Configuração
 
