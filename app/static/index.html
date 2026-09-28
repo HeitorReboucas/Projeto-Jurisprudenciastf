@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Coletor STF</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #1f2b2a;
+        --muted: #64716f;
+        --line: #d8e0dd;
+        --paper: #fbfcfa;
+        --panel: #ffffff;
+        --green: #155c4d;
+        --green-dark: #10483d;
+        --mint: #e5f0ec;
+        --amber: #9a5b12;
+        --red: #a53232;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font: 15px/1.45 "Segoe UI", sans-serif;
+      }
+      header {
+        min-height: 68px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 12px max(24px, calc((100vw - 1180px) / 2));
+        color: #fff;
+        background: var(--green-dark);
+      }
+      .brand { display: flex; align-items: center; gap: 12px; }
+      .brand-mark {
+        display: grid;
+        width: 34px;
+        height: 34px;
+        place-items: center;
+        border: 1px solid #84b7a8;
+        border-radius: 50%;
+        color: #c7e2d8;
+        font: 17px Georgia, serif;
+      }
+      h1 { margin: 0; font: 20px Georgia, serif; }
+      .drive-state { display: flex; align-items: center; gap: 10px; color: #e2eee9; }
+      .drive-state button { border-color: #8caf9f; color: #fff; background: transparent; }
+      main {
+        display: grid;
+        grid-template-columns: minmax(350px, 0.9fr) minmax(430px, 1.1fr);
+        gap: 30px;
+        width: min(1180px, calc(100% - 48px));
+        margin: 34px auto;
+      }
+      section { min-width: 0; }
+      h2 { margin: 0 0 19px; font: 21px Georgia, serif; }
+      h3 { margin: 0 0 12px; font-size: 15px; }
+      .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+      .field { display: grid; gap: 7px; margin-bottom: 17px; }
+      label, legend { font-size: 13px; font-weight: 650; }
+      input, select {
+        width: 100%;
+        min-height: 42px;
+        padding: 9px 11px;
+        border: 1px solid #aebbb6;
+        border-radius: 3px;
+        background: #fff;
+        color: var(--ink);
+        font: inherit;
+      }
+      input:focus, select:focus, button:focus-visible {
+        outline: 3px solid #a7d2c4;
+        outline-offset: 2px;
+      }
+      fieldset { min-width: 0; margin: 0 0 19px; padding: 0; border: 0; }
+      .type-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; margin-top: 10px; }
+      .type-option { display: flex; align-items: center; gap: 8px; min-height: 28px; font-weight: 450; }
+      .type-option input { width: 16px; min-height: 16px; accent-color: var(--green); }
+      .date-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+      button {
+        min-height: 40px;
+        padding: 8px 14px;
+        border: 1px solid var(--green);
+        border-radius: 3px;
+        color: #fff;
+        background: var(--green);
+        font: inherit;
+        font-weight: 650;
+        cursor: pointer;
+      }
+      button:hover { background: var(--green-dark); }
+      button.secondary { color: var(--green-dark); background: #fff; }
+      button.secondary:hover { background: var(--mint); }
+      button:disabled { cursor: wait; opacity: .6; }
+      .primary { width: 100%; min-height: 46px; margin-top: 3px; }
+      .status-panel { padding: 0 0 22px; border-bottom: 1px solid var(--line); }
+      .status-line { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 12px; }
+      .status-label { font-size: 17px; font-weight: 700; }
+      .status-pill { padding: 4px 9px; border-radius: 12px; background: var(--mint); color: var(--green-dark); font-size: 12px; }
+      .progress-track { height: 10px; overflow: hidden; border-radius: 5px; background: #e4e9e6; }
+      .progress-value { width: 0; height: 100%; background: #398b71; transition: width .2s ease; }
+      .progress-caption { display: flex; justify-content: space-between; margin-top: 7px; color: var(--muted); font-size: 13px; }
+      .metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin: 20px 0; }
+      .metric { padding-right: 10px; border-right: 1px solid var(--line); }
+      .metric:last-child { border: 0; }
+      .metric strong { display: block; font: 22px Georgia, serif; }
+      .metric span { color: var(--muted); font-size: 12px; }
+      .current-item { min-height: 22px; overflow-wrap: anywhere; color: var(--muted); font-size: 13px; }
+      .log-list { max-height: 300px; overflow: auto; padding: 0; list-style: none; }
+      .log-list li { padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+      .log-list time { display: block; margin-bottom: 3px; color: var(--muted); font-size: 11px; }
+      .error { color: var(--red); }
+      .message { min-height: 20px; margin: -4px 0 14px; color: var(--amber); font-size: 13px; }
+      .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+      @media (max-width: 820px) {
+        header { padding-inline: 20px; }
+        main { grid-template-columns: 1fr; gap: 34px; width: min(100% - 36px, 640px); margin: 26px auto; }
+        .metrics { grid-template-columns: repeat(3, 1fr); row-gap: 17px; }
+      }
+      @media (max-width: 460px) {
+        header { align-items: flex-start; flex-direction: column; }
+        .type-list { grid-template-columns: 1fr; }
+        .date-row { grid-template-columns: 1fr; gap: 0; }
+        .metrics { grid-template-columns: repeat(2, 1fr); }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand"><span class="brand-mark" aria-hidden="true">S</span><h1>Jurisprudência STF</h1></div>
+      <div class="drive-state">
+        <span id="driveStatus">Google Drive desconectado</span>
+        <button class="secondary" id="connectDrive" type="button">Conectar Drive</button>
+      </div>
+    </header>
+    <main>
+      <section aria-labelledby="collectionHeading">
+        <h2 id="collectionHeading">Nova coleta</h2>
+        <form id="collectionForm">
+          <fieldset>
+            <legend>Tipo de conteúdo</legend>
+            <div class="type-list" id="contentTypes"></div>
+          </fieldset>
+          <div class="date-row">
+            <div class="field"><label for="dateFrom">Data inicial</label><input id="dateFrom" name="date_from" type="date" required /></div>
+            <div class="field"><label for="dateTo">Data final</label><input id="dateTo" name="date_to" type="date" required /></div>
+          </div>
+          <div class="field"><label for="query">Termo de pesquisa</label><input id="query" name="query" maxlength="500" placeholder="Opcional" /></div>
+          <div class="field"><label for="processClass">Classe processual</label><input id="processClass" name="process_class" maxlength="80" placeholder="Opcional, por exemplo RE" /></div>
+          <div class="field">
+            <label for="driveFolder">Pasta do Google Drive</label>
+            <select id="driveFolder" name="drive_folder_id"><option value="">Não enviar ao Drive</option></select>
+          </div>
+          <p class="message" id="formMessage" role="status"></p>
+          <button class="primary" id="startCollection" type="submit">Iniciar coleta</button>
+        </form>
+      </section>
+
+      <section aria-labelledby="progressHeading">
+        <div class="section-head"><h2 id="progressHeading">Execução</h2><button class="secondary" id="resumeCollection" type="button" hidden>Retomar</button></div>
+        <div class="field">
+          <label for="jobHistory">Coletas recentes</label>
+          <select id="jobHistory"><option value="">Nenhuma coleta</option></select>
+        </div>
+        <div class="status-panel">
+          <div class="status-line"><span class="status-label" id="jobStatus">Nenhuma coleta selecionada</span><span class="status-pill" id="jobId">Aguardando</span></div>
+          <div class="progress-track" role="progressbar" aria-label="Progresso da coleta" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="progress-value" id="progressValue"></div></div>
+          <div class="progress-caption"><span id="progressCaption">0 de 0 documentos baixados</span><span id="progressPercent">0%</span></div>
+          <div class="current-item" id="currentItem" aria-live="polite"></div>
+        </div>
+        <div class="metrics" aria-label="Resumo da execução">
+          <div class="metric"><strong id="countFound">0</strong><span>Encontrados</span></div>
+          <div class="metric"><strong id="countDownloaded">0</strong><span>Baixados</span></div>
+          <div class="metric"><strong id="countUploaded">0</strong><span>Enviados</span></div>
+          <div class="metric"><strong id="countDuplicates">0</strong><span>Duplicados</span></div>
+          <div class="metric"><strong id="countErrors">0</strong><span>Erros</span></div>
+        </div>
+        <div class="section-head"><h3>Registro</h3><button class="secondary" id="refreshJobs" type="button">Atualizar</button></div>
+        <ul class="log-list" id="eventList" aria-live="polite"></ul>
+      </section>
+    </main>
+    <script>
+      const form = document.querySelector("#collectionForm");
+      const contentTypes = document.querySelector("#contentTypes");
+      const driveFolder = document.querySelector("#driveFolder");
+      const formMessage = document.querySelector("#formMessage");
+      const startButton = document.querySelector("#startCollection");
+      const resumeButton = document.querySelector("#resumeCollection");
+      const jobHistory = document.querySelector("#jobHistory");
+      const driveStatus = document.querySelector("#driveStatus");
+      const labels = new Map();
+      let currentJobId = null;
+      let pollTimer = null;
+
+      function localDate(value) {
+        const year = value.getFullYear();
+        const month = String(value.getMonth() + 1).padStart(2, "0");
+        const day = String(value.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      }
+
+      function showMessage(message, isError = false) {
+        formMessage.textContent = message;
+        formMessage.classList.toggle("error", isError);
+      }
+
+      async function api(path, options = {}) {
+        const response = await fetch(path, {
+          ...options,
+          headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+        });
+        const result = response.status === 204 ? null : await response.json();
+        if (!response.ok) throw new Error(result?.detail || `Erro HTTP ${response.status}`);
+        return result;
+      }
+
+      async function loadContentTypes() {
+        const types = await api("/api/content-types");
+        contentTypes.replaceChildren();
+        for (const [index, item] of types.entries()) {
+          labels.set(item.id, item.label);
+          const label = document.createElement("label");
+          label.className = "type-option";
+          const input = document.createElement("input");
+          input.type = "checkbox";
+          input.name = "content_type";
+          input.value = item.id;
+          input.checked = index === 0;
+          label.append(input, document.createTextNode(item.label));
+          contentTypes.append(label);
+        }
+      }
+
+      async function refreshDrive() {
+        const status = await api("/api/drive/status");
+        driveStatus.textContent = status.authorized ? "Google Drive conectado" : "Google Drive desconectado";
+        if (!status.authorized) return;
+        const folders = await api("/api/drive/folders");
+        const selected = driveFolder.value;
+        driveFolder.replaceChildren(new Option("Não enviar ao Drive", ""));
+        for (const folder of folders) driveFolder.add(new Option(folder.name, folder.id));
+        if (selected) driveFolder.value = selected;
+      }
+
+      function setStatusLabel(status) {
+        const names = {
+          queued: "Na fila",
+          running: "Em execução",
+          completed: "Concluída",
+          completed_with_errors: "Concluída com erros",
+          interrupted: "Interrompida",
+        };
+        return names[status] || status;
+      }
+
+      function renderJob(job) {
+        document.querySelector("#jobStatus").textContent = setStatusLabel(job.status);
+        document.querySelector("#jobId").textContent = job.id.slice(0, 8);
+        document.querySelector("#countFound").textContent = job.found;
+        document.querySelector("#countDownloaded").textContent = job.downloaded;
+        document.querySelector("#countUploaded").textContent = job.uploaded;
+        document.querySelector("#countDuplicates").textContent = job.duplicates;
+        document.querySelector("#countErrors").textContent = job.errors;
+        document.querySelector("#currentItem").textContent = job.current_item || job.error || "";
+        const percent = job.found ? Math.min(100, Math.round(job.downloaded * 100 / job.found)) : 0;
+        document.querySelector("#progressValue").style.width = `${percent}%`;
+        document.querySelector("#progressPercent").textContent = `${percent}%`;
+        document.querySelector("#progressCaption").textContent = `${job.downloaded} de ${job.found} documentos baixados`;
+        document.querySelector("[role=progressbar]").setAttribute("aria-valuenow", String(percent));
+        resumeButton.hidden = !["interrupted", "completed_with_errors"].includes(job.status);
+        const active = ["queued", "running"].includes(job.status);
+        startButton.disabled = active;
+        if (active) schedulePoll();
+      }
+
+      async function refreshEvents() {
+        if (!currentJobId) return;
+        const events = await api(`/api/jobs/${currentJobId}/events?limit=100`);
+        const list = document.querySelector("#eventList");
+        list.replaceChildren();
+        for (const event of events) {
+          const item = document.createElement("li");
+          const time = document.createElement("time");
+          time.dateTime = event.created_at;
+          time.textContent = new Date(event.created_at).toLocaleString("pt-BR");
+          const message = document.createElement("span");
+          message.textContent = event.message;
+          if (event.level === "error") message.className = "error";
+          item.append(time, message);
+          list.append(item);
+        }
+      }
+
+      async function pollJob() {
+        if (!currentJobId) return;
+        try {
+          const job = await api(`/api/jobs/${currentJobId}`);
+          renderJob(job);
+          await refreshEvents();
+        } catch (error) {
+          showMessage(error.message, true);
+        }
+      }
+
+      async function refreshJobHistory() {
+        const jobs = await api("/api/jobs?limit=50");
+        jobHistory.replaceChildren(new Option("Selecione uma coleta", ""));
+        for (const job of jobs) {
+          const date = new Date(job.created_at).toLocaleString("pt-BR");
+          const summary = job.query || job.content_types.map((type) => labels.get(type) || type).join(", ");
+          const option = new Option(`${date} · ${setStatusLabel(job.status)} · ${summary}`, job.id);
+          jobHistory.add(option);
+        }
+        if (currentJobId) jobHistory.value = currentJobId;
+      }
+
+      function schedulePoll() {
+        if (pollTimer) return;
+        pollTimer = window.setTimeout(async () => {
+          pollTimer = null;
+          await pollJob();
+        }, 1500);
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const selectedTypes = [...form.querySelectorAll("input[name=content_type]:checked")].map((input) => input.value);
+        if (!selectedTypes.length) return showMessage("Selecione ao menos um tipo de conteúdo.", true);
+        startButton.disabled = true;
+        showMessage("");
+        try {
+          const job = await api("/api/jobs", {
+            method: "POST",
+            body: JSON.stringify({
+              content_types: selectedTypes,
+              date_from: form.date_from.value,
+              date_to: form.date_to.value,
+              query: form.query.value.trim() || null,
+              process_class: form.process_class.value.trim() || null,
+              drive_folder_id: driveFolder.value || null,
+            }),
+          });
+          currentJobId = job.id;
+          renderJob(job);
+          await refreshJobHistory();
+          await refreshEvents();
+        } catch (error) {
+          showMessage(error.message, true);
+          startButton.disabled = false;
+        }
+      });
+
+      resumeButton.addEventListener("click", async () => {
+        if (!currentJobId) return;
+        resumeButton.disabled = true;
+        try {
+          const job = await api(`/api/jobs/${currentJobId}/resume`, { method: "POST" });
+          renderJob(job);
+          await refreshJobHistory();
+          await refreshEvents();
+        } catch (error) {
+          showMessage(error.message, true);
+        } finally {
+          resumeButton.disabled = false;
+        }
+      });
+
+      document.querySelector("#connectDrive").addEventListener("click", async () => {
+        try {
+          const result = await api("/api/drive/auth/url");
+          window.open(result.authorization_url, "_blank", "noopener,noreferrer");
+          showMessage("Conclua a autorização Google na nova janela e atualize as pastas.");
+        } catch (error) {
+          showMessage(error.message, true);
+        }
+      });
+
+      document.querySelector("#refreshJobs").addEventListener("click", async () => {
+        if (currentJobId) await pollJob();
+        await Promise.all([refreshDrive(), refreshJobHistory()]).catch((error) => showMessage(error.message, true));
+      });
+
+      jobHistory.addEventListener("change", async () => {
+        currentJobId = jobHistory.value || null;
+        if (currentJobId) await pollJob();
+      });
+
+      const today = new Date();
+      const monthAgo = new Date(today);
+      monthAgo.setDate(today.getDate() - 30);
+      form.date_from.value = localDate(monthAgo);
+      form.date_to.value = localDate(today);
+      Promise.all([loadContentTypes(), refreshDrive(), refreshJobHistory()]).catch((error) => showMessage(error.message, true));
+    </script>
+  </body>
+</html>
