@@ -50,7 +50,19 @@ py -3 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-Esses comandos criam um ambiente Python separado para este projeto e instalam os componentes de que ele precisa. Faça essa preparação apenas na primeira vez ou depois de baixar uma cópia nova do projeto.
+Esses comandos criam um ambiente Python separado para este projeto e instalam os componentes de que ele precisa. No Windows, o coletor usa o Microsoft Edge instalado para abrir a página oficial de pesquisa do STF. Faça essa preparação apenas na primeira vez ou depois de baixar uma cópia nova do projeto.
+
+Se não tiver Microsoft Edge, instale o Chromium controlado pelo Playwright e configure o canal usado pelo programa:
+
+```powershell
+.\.venv\Scripts\python.exe -m playwright install chromium
+```
+
+Depois, crie ou edite o arquivo `.env` na pasta do projeto e acrescente:
+
+```text
+STF_BROWSER_CHANNEL=chromium
+```
 
 Não é obrigatório ativar o ambiente com `Activate.ps1`; usar o caminho `.\.venv\Scripts\python.exe` evita problemas com as permissões do PowerShell.
 
@@ -153,9 +165,17 @@ Instale o Python 3.12 ou mais recente pelo site oficial, feche e abra novamente 
 
 Confira se selecionou o tipo de conteúdo correto, se os termos foram escritos como pretendido e se o período escolhido não exclui os resultados. As datas são de publicação, não necessariamente de julgamento. O portal do STF determina quais documentos correspondem aos termos.
 
+No Windows, confirme que o Microsoft Edge está instalado. No macOS e Linux, instale o navegador do Playwright uma vez:
+
+```bash
+.venv/bin/python -m playwright install chromium
+```
+
+No macOS e Linux, faça esse passo logo depois de instalar as dependências. Se usar o Chromium do Playwright no Windows, adicione `STF_BROWSER_CHANNEL=chromium` ao arquivo `.env`.
+
 ### A coleta ficou como “Interrompida” e mostra HTTP 202
 
-Em alguns momentos o portal responde temporariamente sem entregar resultados, inclusive por controles de tráfego. O programa registra a interrupção e não tenta contornar essa proteção. Aguarde um pouco e depois selecione a coleta em **Coletas recentes** e clique em **Retomar**.
+O coletor abre a página oficial de pesquisa em um navegador e valida automaticamente o endereço da requisição, o formato da resposta e a origem dos links de PDF antes de processar documentos. Em alguns momentos o portal ainda pode responder temporariamente sem resultados, inclusive por controles de tráfego. O programa registra a interrupção e não tenta contornar essa proteção. Aguarde um pouco e depois selecione a coleta em **Coletas recentes** e clique em **Retomar**.
 
 ### Um documento aparece como erro ou não foi baixado
 
@@ -226,10 +246,10 @@ Normalmente não é necessário alterar estas opções. Se precisar, crie ou edi
 | Opção | Valor inicial | Explicação simples |
 | --- | --- | --- |
 | `DATA_DIR` | `data` | Onde guardar o banco, os PDFs e o token do Drive. |
-| `STF_SEARCH_URL` | Endereço oficial do portal | Serviço usado para fazer a pesquisa. |
 | `STF_TIMEOUT_SECONDS` | `30` | Tempo máximo de espera por resposta da pesquisa. |
 | `STF_REQUEST_DELAY_SECONDS` | `1.0` | Pausa mínima entre pesquisas no STF. Não pode ser menor que 1 segundo. |
-| `STF_MAX_ATTEMPTS` | `3` | Número de tentativas em falhas temporárias que podem ser repetidas. |
+| `STF_MAX_ATTEMPTS` | `3` | Número de tentativas para downloads de PDF com falhas temporárias. |
+| `STF_BROWSER_CHANNEL` | Edge no Windows; Chromium padrão em outros sistemas | Navegador que o Playwright deve abrir. |
 | `DOWNLOAD_MAX_BYTES` | `52428800` | Tamanho máximo permitido por PDF, aproximadamente 50 MiB. |
 | `DOWNLOAD_TIMEOUT_SECONDS` | `60` | Tempo máximo de espera por cada PDF. |
 | `GOOGLE_CLIENT_SECRETS_FILE` | `credentials.json` | Local do arquivo de credenciais OAuth. |

@@ -10,10 +10,10 @@ class Settings(BaseSettings):
 
     app_name: str = "Coletor de Jurisprudências STF"
     data_dir: Path = Path("data")
-    stf_search_url: str = "https://jurisprudencia.stf.jus.br/api/search/search"
     stf_timeout_seconds: float = 30
     stf_request_delay_seconds: float = Field(default=1.0, ge=1.0)
     stf_max_attempts: int = 3
+    stf_browser_channel: str | None = None
     download_max_bytes: int = 50 * 1024 * 1024
     download_timeout_seconds: float = 60
     google_client_secrets_file: Path = Path("credentials.json")

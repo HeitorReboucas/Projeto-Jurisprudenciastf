@@ -9,7 +9,8 @@ from app.database import Database
 from app.downloader import PDFDownloader
 from app.drive import DriveIntegrationError, GoogleDriveClient
 from app.organizer import pdf_path
-from app.stf import STFClient, STFDocument
+from app.stf import STFDocument
+from app.stf_browser import STFPortalBrowser
 
 
 PAGE_SIZE = 100
@@ -20,11 +21,10 @@ class Collector:
     def __init__(self, database: Database, settings: Settings) -> None:
         self.database = database
         self.settings = settings
-        self.stf = STFClient(
-            search_url=settings.stf_search_url,
+        self.stf = STFPortalBrowser(
             timeout_seconds=settings.stf_timeout_seconds,
             request_delay_seconds=settings.stf_request_delay_seconds,
-            max_attempts=settings.stf_max_attempts,
+            browser_channel=settings.stf_browser_channel,
         )
         self.downloader = PDFDownloader(
             timeout_seconds=settings.download_timeout_seconds,
@@ -34,8 +34,13 @@ class Collector:
         self.drive = GoogleDriveClient(settings)
 
     def run(self, job_id: str) -> None:
-        with COLLECTION_LOCK:
-            self._run_locked(job_id)
+        try:
+            with COLLECTION_LOCK:
+                self._run_locked(job_id)
+        finally:
+            close_browser = getattr(self.stf, "close", None)
+            if close_browser:
+                close_browser()
 
     def _run_locked(self, job_id: str) -> None:
         job = self.database.get_job(job_id)
