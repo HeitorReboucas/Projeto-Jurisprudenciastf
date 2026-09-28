@@ -1,3 +1,5 @@
+## Esse projeto contem o uso de Inteligência Artificial!!
+
 # Coletor de Jurisprudência do STF
 
 Aplicação local para pesquisar documentos públicos no portal oficial de jurisprudência do Supremo Tribunal Federal, baixar inteiros teores em PDF, deduplicar por chave e SHA-256, manter checkpoints em SQLite e, opcionalmente, enviar os arquivos ao Google Drive.
