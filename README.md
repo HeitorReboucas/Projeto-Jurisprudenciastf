@@ -246,7 +246,7 @@ Normalmente não é necessário alterar estas opções. Se precisar, crie ou edi
 | Opção | Valor inicial | Explicação simples |
 | --- | --- | --- |
 | `DATA_DIR` | `data` | Onde guardar o banco, os PDFs e o token do Drive. |
-| `STF_TIMEOUT_SECONDS` | `30` | Tempo máximo de espera por resposta da pesquisa. |
+| `STF_TIMEOUT_SECONDS` | `90` | Tempo máximo para abrir o portal e receber a resposta da pesquisa. |
 | `STF_REQUEST_DELAY_SECONDS` | `1.0` | Pausa mínima entre pesquisas no STF. Não pode ser menor que 1 segundo. |
 | `STF_MAX_ATTEMPTS` | `3` | Número de tentativas para downloads de PDF com falhas temporárias. |
 | `STF_BROWSER_CHANNEL` | Edge no Windows; Chromium padrão em outros sistemas | Navegador que o Playwright deve abrir. |

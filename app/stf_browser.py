@@ -52,6 +52,7 @@ class STFPortalBrowser:
         self._page: Page | None = None
         self._extra_filters: list[dict[str, Any]] = []
         self._route_error: str | None = None
+        self._request_failures: list[str] = []
 
     def search_page(
         self,
@@ -78,6 +79,7 @@ class STFPortalBrowser:
             date_from, date_to, process_class
         )
         self._route_error = None
+        self._request_failures.clear()
         search_url = self._build_search_url(
             base=base,
             query=query.strip(),
@@ -145,9 +147,20 @@ class STFPortalBrowser:
         except PlaywrightTimeoutError as error:
             if self._route_error:
                 raise STFResponseValidationError(self._route_error) from error
+            if self._request_failures:
+                failures = "; ".join(self._request_failures[-3:])
+                raise RuntimeError(
+                    f"A chamada do navegador ao serviço de pesquisa do STF falhou: {failures}"
+                ) from error
+            if self._page and not self._page.url.startswith(STF_SEARCH_PAGE):
+                raise RuntimeError(
+                    "O navegador não conseguiu carregar a página de pesquisa do STF. "
+                    "Confira sua conexão, proxy ou firewall."
+                ) from error
             raise RuntimeError(
-                "O portal STF não concluiu a pesquisa no tempo esperado. "
-                "Confira o acesso ao site e tente novamente mais tarde."
+                f"A página do STF abriu, mas não recebemos a resposta da pesquisa "
+                f"em {self.timeout_ms // 1000} segundos. Confira proxy/firewall ou "
+                "tente novamente mais tarde."
             ) from error
         except PlaywrightError as error:
             raise RuntimeError(
@@ -198,6 +211,13 @@ class STFPortalBrowser:
         self._context = self._browser.new_context(accept_downloads=True)
         self._context.route(STF_SEARCH_API_URL, self._continue_search_request)
         self._page = self._context.new_page()
+        self._page.on("requestfailed", self._record_request_failure)
+
+    def _record_request_failure(self, request: Any) -> None:
+        if STF_SEARCH_API_FRAGMENT not in request.url:
+            return
+        failure = request.failure or "motivo não informado"
+        self._request_failures.append(f"{request.url}: {failure}")
 
     def _continue_search_request(self, route: Route) -> None:
         try:

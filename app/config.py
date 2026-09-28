@@ -10,7 +10,7 @@ class Settings(BaseSettings):
 
     app_name: str = "Coletor de Jurisprudências STF"
     data_dir: Path = Path("data")
-    stf_timeout_seconds: float = 30
+    stf_timeout_seconds: float = 90
     stf_request_delay_seconds: float = Field(default=1.0, ge=1.0)
     stf_max_attempts: int = 3
     stf_browser_channel: str | None = None
