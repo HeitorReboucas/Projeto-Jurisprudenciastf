@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import platform
+import re
 import time
 from datetime import date
 from typing import Any
@@ -23,7 +24,9 @@ from app.stf import CONTENT_BASES, STFClient, STFDocument, STFTemporaryUnavailab
 
 STF_SEARCH_PAGE = "https://jurisprudencia.stf.jus.br/pages/search"
 STF_SEARCH_API_FRAGMENT = "/api/search/search"
-STF_SEARCH_API_URL = f"https://jurisprudencia.stf.jus.br{STF_SEARCH_API_FRAGMENT}"
+STF_SEARCH_API_PATTERN = re.compile(
+    r"^https://jurisprudencia\.stf\.jus\.br/api/search/search(?:\?.*)?$"
+)
 ALLOWED_PDF_HOSTS = {"portal.stf.jus.br", "www.stf.jus.br"}
 
 
@@ -92,7 +95,7 @@ class STFPortalBrowser:
 
         try:
             with self._page.expect_response(
-                lambda response: response.url.split("?", 1)[0] == STF_SEARCH_API_URL,
+                lambda response: bool(STF_SEARCH_API_PATTERN.fullmatch(response.url)),
                 timeout=self.timeout_ms,
             ) as response_info:
                 navigation_response = self._page.goto(
@@ -217,12 +220,17 @@ class STFPortalBrowser:
 
         assert self._browser is not None
         self._context = self._browser.new_context(accept_downloads=True)
-        self._context.route("**/api/search/search**", self._continue_search_request)
+        self._context.route(STF_SEARCH_API_PATTERN, self._continue_search_request)
         self._page = self._context.new_page()
+        self._page.on("request", self._record_search_request)
         self._page.on("requestfailed", self._record_request_failure)
 
+    def _record_search_request(self, request: Any) -> None:
+        if STF_SEARCH_API_PATTERN.fullmatch(request.url):
+            self._search_request_seen = True
+
     def _record_request_failure(self, request: Any) -> None:
-        if STF_SEARCH_API_FRAGMENT not in request.url:
+        if not STF_SEARCH_API_PATTERN.fullmatch(request.url):
             return
         failure = request.failure or "motivo não informado"
         self._request_failures.append(f"{request.url}: {failure}")
