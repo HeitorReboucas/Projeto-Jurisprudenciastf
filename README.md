@@ -175,7 +175,7 @@ No macOS e Linux, faça esse passo logo depois de instalar as dependências. Se 
 
 ### A coleta ficou como “Interrompida” e mostra HTTP 202
 
-O coletor abre a página oficial de pesquisa em um navegador e valida automaticamente o endereço da requisição, o formato da resposta e a origem dos links de PDF antes de processar documentos. Em alguns momentos o portal ainda pode responder temporariamente sem resultados, inclusive por controles de tráfego. O programa registra a interrupção e não tenta contornar essa proteção. Aguarde um pouco e depois selecione a coleta em **Coletas recentes** e clique em **Retomar**.
+O coletor abre a página oficial de pesquisa em um navegador e valida automaticamente o endereço da requisição, o formato da resposta e a origem dos links de PDF antes de processar documentos. Se a URL de pesquisa não iniciar a busca, ele tenta enviar as palavras pelo campo oficial do próprio portal. Em alguns momentos o STF ainda pode responder temporariamente sem resultados, inclusive por controles de tráfego. O programa registra a interrupção e não tenta contornar essa proteção. Aguarde um pouco e depois selecione a coleta em **Coletas recentes** e clique em **Retomar**.
 
 ### Um documento aparece como erro ou não foi baixado
 

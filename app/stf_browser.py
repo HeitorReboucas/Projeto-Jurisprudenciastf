@@ -25,7 +25,7 @@ from app.stf import CONTENT_BASES, STFClient, STFDocument, STFTemporaryUnavailab
 STF_SEARCH_PAGE = "https://jurisprudencia.stf.jus.br/pages/search"
 STF_SEARCH_API_FRAGMENT = "/api/search/search"
 STF_SEARCH_API_PATTERN = re.compile(
-    r"^https://jurisprudencia\.stf\.jus\.br/api/search/search(?:\?.*)?$"
+    r"^https://jurisprudencia\.stf\.jus\.br/api/search/search/?(?:\?.*)?$"
 )
 ALLOWED_PDF_HOSTS = {"portal.stf.jus.br", "www.stf.jus.br"}
 
@@ -94,25 +94,7 @@ class STFPortalBrowser:
         time.sleep(self.request_delay_seconds)
 
         try:
-            with self._page.expect_response(
-                lambda response: bool(STF_SEARCH_API_PATTERN.fullmatch(response.url)),
-                timeout=self.timeout_ms,
-            ) as response_info:
-                navigation_response = self._page.goto(
-                    search_url,
-                    wait_until="domcontentloaded",
-                    timeout=self.timeout_ms,
-                )
-
-            if navigation_response and navigation_response.status == 202:
-                navigation_body = navigation_response.body()
-                if not navigation_body:
-                    raise STFTemporaryUnavailable(
-                        "O portal STF retornou HTTP 202 vazio ao abrir a pesquisa. "
-                        "Aguarde antes de iniciar outra coleta."
-                    )
-
-            response = response_info.value
+            response = self._open_search_and_capture(query, search_url)
             self._validate_api_url(response.url)
             if response.status == 202 and not response.body():
                 raise STFTemporaryUnavailable(
@@ -225,6 +207,74 @@ class STFPortalBrowser:
         self._page.on("request", self._record_search_request)
         self._page.on("requestfailed", self._record_request_failure)
 
+    def _open_search_and_capture(self, query: str, search_url: str) -> Any:
+        assert self._page is not None
+        matches_search_api = lambda response: bool(
+            STF_SEARCH_API_PATTERN.fullmatch(response.url)
+        )
+        direct_navigation_error: Exception | None = None
+
+        try:
+            with self._page.expect_response(
+                matches_search_api,
+                timeout=min(self.timeout_ms, 12_000),
+            ) as response_info:
+                self._page.goto(
+                    search_url,
+                    wait_until="domcontentloaded",
+                    timeout=self.timeout_ms,
+                )
+            return response_info.value
+        except PlaywrightTimeoutError as error:
+            direct_navigation_error = error
+
+        if self._request_failures:
+            failures = "; ".join(self._request_failures[-3:])
+            raise RuntimeError(
+                f"A chamada iniciada pelo portal STF falhou: {failures}"
+            ) from direct_navigation_error
+        if self._search_request_seen:
+            raise STFTemporaryUnavailable(
+                "O portal iniciou a pesquisa pela URL, mas não devolveu a resposta. "
+                "Aguarde e tente novamente mais tarde."
+            ) from direct_navigation_error
+
+        try:
+            self._page.goto(
+                STF_SEARCH_PAGE,
+                wait_until="domcontentloaded",
+                timeout=self.timeout_ms,
+            )
+            search_field = self._page.locator(
+                'input[placeholder="Pesquisar palavras-chave"]'
+            ).first
+            search_field.wait_for(state="visible", timeout=self.timeout_ms)
+            search_field.fill(query)
+            with self._page.expect_response(
+                matches_search_api,
+                timeout=self.timeout_ms,
+            ) as response_info:
+                search_field.press("Enter")
+            return response_info.value
+        except PlaywrightTimeoutError as error:
+            if self._route_error:
+                raise STFResponseValidationError(self._route_error) from error
+            if self._request_failures:
+                failures = "; ".join(self._request_failures[-3:])
+                raise RuntimeError(
+                    f"A busca pelo formulário do STF falhou: {failures}"
+                ) from error
+            if self._search_request_seen:
+                raise STFTemporaryUnavailable(
+                    "O formulário iniciou a pesquisa, mas o STF não devolveu "
+                    "os resultados no tempo esperado. Aguarde antes de tentar novamente."
+                ) from error
+            raise RuntimeError(
+                "O STF abriu, mas nem a URL de pesquisa nem o formulário iniciaram "
+                "uma chamada ao serviço de resultados. O portal pode ter mudado "
+                "ou estar indisponível."
+            ) from error
+
     def _record_search_request(self, request: Any) -> None:
         if STF_SEARCH_API_PATTERN.fullmatch(request.url):
             self._search_request_seen = True
@@ -266,7 +316,7 @@ class STFPortalBrowser:
         if (
             parsed.scheme != "https"
             or parsed.hostname != "jurisprudencia.stf.jus.br"
-            or parsed.path != STF_SEARCH_API_FRAGMENT
+            or parsed.path.rstrip("/") != STF_SEARCH_API_FRAGMENT
         ):
             raise STFResponseValidationError(
                 "A pesquisa tentou acessar um endereço que não pertence ao portal oficial do STF."
