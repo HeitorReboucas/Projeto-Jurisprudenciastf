@@ -53,6 +53,7 @@ class STFPortalBrowser:
         self._extra_filters: list[dict[str, Any]] = []
         self._route_error: str | None = None
         self._request_failures: list[str] = []
+        self._search_request_seen = False
 
     def search_page(
         self,
@@ -80,6 +81,7 @@ class STFPortalBrowser:
         )
         self._route_error = None
         self._request_failures.clear()
+        self._search_request_seen = False
         search_url = self._build_search_url(
             base=base,
             query=query.strip(),
@@ -152,6 +154,12 @@ class STFPortalBrowser:
                 raise RuntimeError(
                     f"A chamada do navegador ao serviço de pesquisa do STF falhou: {failures}"
                 ) from error
+            if not self._search_request_seen:
+                raise RuntimeError(
+                    "A página do STF abriu, mas não iniciou a chamada de pesquisa. "
+                    "O portal pode ter alterado seu funcionamento; abra a busca no site "
+                    "e tente novamente mais tarde."
+                ) from error
             if self._page and not self._page.url.startswith(STF_SEARCH_PAGE):
                 raise RuntimeError(
                     "O navegador não conseguiu carregar a página de pesquisa do STF. "
@@ -209,7 +217,7 @@ class STFPortalBrowser:
 
         assert self._browser is not None
         self._context = self._browser.new_context(accept_downloads=True)
-        self._context.route(STF_SEARCH_API_URL, self._continue_search_request)
+        self._context.route("**/api/search/search**", self._continue_search_request)
         self._page = self._context.new_page()
         self._page.on("requestfailed", self._record_request_failure)
 
@@ -222,6 +230,7 @@ class STFPortalBrowser:
     def _continue_search_request(self, route: Route) -> None:
         try:
             self._validate_api_url(route.request.url)
+            self._search_request_seen = True
             request_body = route.request.post_data_json
             if not isinstance(request_body, dict):
                 route.continue_()
